@@ -2,9 +2,9 @@
 require('../../config.php');
 require_login();
 
-$PAGE->set_url('/local/KOI_timetable_moodle/index.php');
-$PAGE->set_title(get_string('timetable', 'local_KOI_timetable_moodle'));
-$PAGE->set_heading(get_string('timetable', 'local_KOI_timetable_moodle'));
+$PAGE->set_url('/local/koitimetable/index.php');
+$PAGE->set_title(get_string('timetable', 'local_koitimetable'));
+$PAGE->set_heading(get_string('timetable', 'local_koitimetable'));
 
 echo $OUTPUT->header();
 
@@ -25,7 +25,7 @@ list($sqlin, $params) = $DB->get_in_or_equal($groupnames, SQL_PARAMS_NAMED);
 
 $sql = "
     SELECT *
-    FROM {local_KOItimetable}
+    FROM {local_koitimetable}
     WHERE groupname $sqlin
     ORDER BY startdate, timestart
 ";

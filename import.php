@@ -2,9 +2,9 @@
 require('../../config.php');
 require_login();
 
-require_capability('local/KOI_timetable_moodle:manage', context_system::instance());
+require_capability('local/koitimetable:manage', context_system::instance());
 
-$PAGE->set_url('/local/KOI_timetable_moodle/import.php');
+$PAGE->set_url('/local/koitimetable/import.php');
 $PAGE->set_title('Import timetable');
 $PAGE->set_heading('Import timetable');
 
@@ -32,7 +32,7 @@ if ($content = $csv->get_file_content()) {
         $record->groupid   = $row['CLS_STREAM_ID'];
         $record->staffid   = $row['STAFF_ID'];
 
-        $DB->insert_record('local_KOItimetable', $record);
+        $DB->insert_record('local_koitimetable', $record);
     }
 
     echo $OUTPUT->notification('Import complete', 'notifysuccess');

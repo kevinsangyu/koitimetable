@@ -1,13 +1,13 @@
 <?php
 $capabilities = [
-    'local/KOI_timetable_moodle:view' => [
+    'local/koitimetable:view' => [
         'captype' => 'read',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
             'student' => CAP_ALLOW
         ]
     ],
-    'local/KOI_timetable_moodle:manage' => [
+    'local/koitimetable:manage' => [
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [

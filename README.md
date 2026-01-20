@@ -4,4 +4,4 @@ This is a local moodle plugin for visualising student's timetable/weekly class s
 Written by Kevin Yu (IT Team)
 
 # Installation Instructions
-To install this plugin, you should place this repository in a folder in moodle/local.
+To install this plugin, you should place this repository's files in moodle/local/koitimetable

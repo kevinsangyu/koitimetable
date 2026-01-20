@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/KOI_timetable_moodle/db" VERSION="20260120" COMMENT="Stream timetable">
+<XMLDB PATH="local/koitimetable/db" VERSION="20260121" COMMENT="KOI timetable">
   <TABLES>
-    <TABLE NAME="local_KOItimetable" COMMENT="Imported timetable">
+    <TABLE NAME="local_koitimetable" COMMENT="Imported timetable">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="year" TYPE="int" LENGTH="4" NOTNULL="true"/>
