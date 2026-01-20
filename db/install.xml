@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/KOI_timetable_moodle/db" VERSION="20260120" COMMENT="Stream timetable">
+  <TABLES>
+    <TABLE NAME="local_KOItimetable" COMMENT="Imported timetable">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="year" TYPE="int" LENGTH="4" NOTNULL="true"/>
+        <FIELD NAME="studyperiod" TYPE="char" LENGTH="2" NOTNULL="true"/>
+        <FIELD NAME="groupname" TYPE="char" LENGTH="100" NOTNULL="true"/>
+        <FIELD NAME="startdate" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="enddate" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="timestart" TYPE="int" LENGTH="6" NOTNULL="true"/>
+        <FIELD NAME="timeend" TYPE="int" LENGTH="6" NOTNULL="true"/>
+        <FIELD NAME="building" TYPE="char" LENGTH="20"/>
+        <FIELD NAME="room" TYPE="char" LENGTH="20"/>
+        <FIELD NAME="groupid" TYPE="int" LENGTH="10"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+    </TABLE>
+  </TABLES>
+</XMLDB>
