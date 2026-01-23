@@ -6,15 +6,14 @@ $capabilities = [
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
             'student' => CAP_ALLOW,
-            'admin' => CAP_ALLOW,
-            'manager' => CAP_ALLOW
         ]
     ],
     'local/koitimetable:manage' => [
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
-            'manager' => CAP_ALLOW
+            'manager' => CAP_ALLOW,
+            'admin' => CAP_ALLOW,
         ]
     ],
 ];

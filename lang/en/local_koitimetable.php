@@ -1,4 +1,4 @@
 <?php
 $string['pluginname'] = 'KOItimetable';
-$string['timetable'] = 'My timetable';
+$string['timetable'] = 'My Timetable';
 $string['import'] = 'Import timetable CSV';

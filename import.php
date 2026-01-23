@@ -4,7 +4,7 @@ require_once(__DIR__ . '/../../config.php');
 require_once(__DIR__ . '/upload_form.php');
 
 require_login();
-require_capability('local/koitimetable:view', context_system::instance());
+require_capability('local/koitimetable:manage', context_system::instance());
 
 $context = context_system::instance();
 global $DB;
