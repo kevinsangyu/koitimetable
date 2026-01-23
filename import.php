@@ -1,41 +1,104 @@
 <?php
-require('../../config.php');
-require_login();
 
-require_capability('local/koitimetable:manage', context_system::instance());
+require_once(__DIR__ . '/../../config.php');
+require_once(__DIR__ . '/upload_form.php');
+
+require_login();
+require_capability('local/koitimetable:view', context_system::instance());
+
+$context = context_system::instance();
 
 $PAGE->set_url('/local/koitimetable/import.php');
-$PAGE->set_title('Import timetable');
-$PAGE->set_heading('Import timetable');
+$PAGE->set_context($context);
+$PAGE->set_title('CSV Viewer');
+$PAGE->set_heading('CSV Viewer');
+
+$form = new local_koitimetable_upload_form();
 
 echo $OUTPUT->header();
 
-$csv = new csv_import_reader('KOI_import', 'KOI_import');
+/* === Handle upload === */
+if ($form->is_cancelled()) {
+    redirect($PAGE->url);
 
-if ($content = $csv->get_file_content()) {
-    $csv->load_csv_content($content, 'utf-8', ',');
-    $rows = $csv->get_records();
+} else if ($data = $form->get_data()) {
 
-    global $DB;
+    file_save_draft_area_files(
+        $data->csvfile,
+        $context->id,
+        'local_koitimetable',
+        'csvfile',
+        0,
+        ['subdirs' => 0, 'maxfiles' => 1]
+    );
 
-    foreach ($rows as $row) {
-        $record = new stdClass();
-        $record->groupname = $row['CLS_STREAM_DESC'];
-        $record->year      = (int)$row['AVAIL_YR'];
-        $record->studyperiod = $row['SPRD_CD'];
-        $record->startdate = substr($row['CLASS_START_DT'], 0, 11);
-        $record->enddate   = substr($row['CLASS_END_DT'], 0, 11);
-        $record->timestart = (int)$row['CLASS_START_TIME'];
-        $record->timeend   = (int)$row['CLASS_END_TIME'];
-        $record->building  = $row['BUILDING_ID'];
-        $record->room      = $row['ROOM_ID'];
-        $record->groupid   = $row['CLS_STREAM_ID'];
-        $record->staffid   = $row['STAFF_ID'];
-
-        $DB->insert_record('local_koitimetable', $record);
-    }
-
-    echo $OUTPUT->notification('Import complete', 'notifysuccess');
+    echo $OUTPUT->notification('CSV uploaded successfully', 'notifysuccess');
 }
 
-echo $OUTPUT->footer();
+
+/* === Insert into DB === */
+global $DB;
+
+$fs = get_file_storage();
+$files = $fs->get_area_files(
+    $context->id,
+    'local_koitimetable',
+    'csvfile',
+    0,
+    'timemodified DESC',
+    false
+);
+
+if (!$files) {
+    echo $OUTPUT->notification('No CSV file found.', 'notifyerror');
+    echo $OUTPUT->footer();
+    exit;
+}
+
+$file = reset($files);
+$content = $file->get_content();
+
+/* === Parse CSV === */
+$lines = array_map('str_getcsv', explode("\n", trim($content)));
+$headers = array_shift($lines);
+
+/* Map headers to column index */
+$headerindex = array_flip($headers);
+
+/* Optional: clear old data first */
+$DB->delete_records('local_koitimetable');
+
+/* === Insert rows === */
+$inserted = 0;
+
+foreach ($lines as $line) {
+    if (count($line) < count($headers)) {
+        continue; // skip broken rows
+    }
+
+    $row = [];
+    foreach ($headerindex as $key => $index) {
+        $row[$key] = $line[$index] ?? null;
+    }
+
+    $record = new stdClass();
+    $record->groupname = $row['CLS_STREAM_DESC'];
+    $record->startdate = strtotime($row['CLASS_START_DT']);
+    $record->enddate   = strtotime($row['CLASS_END_DT']);
+    $record->timestart = (int)$row['CLASS_START_TIME'];
+    $record->timeend   = (int)$row['CLASS_END_TIME'];
+    $record->building  = $row['BUILDING_ID'];
+    $record->room      = $row['ROOM_ID'];
+    $record->streamid  = (int)$row['CLS_STREAM_ID'];
+    $record->year      = (int)$row['AVAIL_YEAR'];
+    $record->studyperiod = (int)$row['SPRD_CD'];
+    // consider adding class type, lecturer...
+
+    $DB->insert_record('local_koitimetable', $record);
+    $inserted++;
+}
+
+echo $OUTPUT->notification(
+    "{$inserted} timetable records imported successfully.",
+    'notifysuccess'
+);

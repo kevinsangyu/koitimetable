@@ -1,10 +1,13 @@
 <?php
 $capabilities = [
     'local/koitimetable:view' => [
+        'riskbitmask' => RISK_PERSONAL,
         'captype' => 'read',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
-            'student' => CAP_ALLOW
+            'student' => CAP_ALLOW,
+            'admin' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
         ]
     ],
     'local/koitimetable:manage' => [
