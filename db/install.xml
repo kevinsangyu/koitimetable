@@ -5,6 +5,7 @@
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="groupname" TYPE="char" LENGTH="100" NOTNULL="true"/>
+        <FIELD NAME="activity" TYPE="int" LENGTH="1"/>
         <FIELD NAME="startdate" TYPE="int" LENGTH="10" NOTNULL="true"/>
         <FIELD NAME="enddate" TYPE="int" LENGTH="10" NOTNULL="true"/>
         <FIELD NAME="timestart" TYPE="int" LENGTH="6" NOTNULL="true"/>

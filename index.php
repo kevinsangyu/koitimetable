@@ -56,7 +56,7 @@ foreach ($records as $r) {
     $start = str_pad($r->timestart, 6, '0', STR_PAD_LEFT);
     $end = str_pad($r->timeend, 6, '0', STR_PAD_LEFT);
     $table->data[] = [
-        s($r->groupname),
+        s($r->groupname) . ' - ' . s($r->activity == 1 ? 'Lecture' : 'Tutorial'),
         userdate($r->startdate, '%d %b %Y'),
         substr($start, 0, 2) . ':' . substr($start, 2, 2)
         . ' – ' .
@@ -97,7 +97,7 @@ foreach ($records as $r) {
         intval(substr($end, 2, 2));
 
     $week[$weekday][] = (object)[
-        'group' => $r->groupname,
+        'group' => substr($r->groupname, 0, 6) . ' - ' . ($r->activity == 1 ? 'Lecture' : 'Tutorial'),
         'start' => $startminutes,
         'end'   => $endminutes,
         'room'  => $r->building . ' ' . $r->room
@@ -159,7 +159,7 @@ foreach ($days as $daynum => $dayname) {
             $width = ($c->end - $c->start) * 2; // double the scale, i.e. 1 min = 0.5px
 
             echo html_writer::div(
-                '<strong>' . s(substr($c->group, 0, 6)) . '</strong><br>' . s($c->room),
+                '<strong>' . $c->group . '</strong><br>' . s($c->room),
                 'class-block',
                 [
                     'style' => "

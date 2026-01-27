@@ -70,7 +70,8 @@ if ($form->is_cancelled()) {
         'CLS_BKG_START_TIME',
         'CLS_BKG_END_TIME',
         'BUILDING_ID',
-        'ROOM_ID'
+        'ROOM_ID',
+        'ACTIVITY'
     ];
 
     $missing = array_diff($requiredheaders, $headers);
@@ -100,6 +101,7 @@ if ($form->is_cancelled()) {
     foreach ($lines as $line) {
         if (count($line) < count($headers)) {
             $skipped++;
+            echo $OUTPUT->notification('Skipped: More fields than expected' . $line, 'notifyerror');
             continue; // skip broken rows
         }
 
@@ -116,6 +118,7 @@ if ($form->is_cancelled()) {
             empty($row['CLS_BKG_CMT'])
         ) {
             $skipped++;
+            echo $OUTPUT->notification('Skipped: Missing required fields in row: ' . implode(', ', $line), 'notifyerror');
             continue;
         }
 
@@ -125,6 +128,7 @@ if ($form->is_cancelled()) {
 
         if (!$startdate || !$enddate || $enddate < $startdate) {
             $skipped++;
+            echo $OUTPUT->notification('Skipped: Invalid date range', 'notifyerror');
             continue;
         }
 
@@ -137,12 +141,14 @@ if ($form->is_cancelled()) {
         $record->timeend   = (int)$row['CLS_BKG_END_TIME'];
         $record->building  = $row['BUILDING_ID'];
         $record->room      = $row['ROOM_ID'];
+        $record->activity  = (int)$row['ACTIVITY'];
         // consider adding class type, lecturer...
 
         try {
             $DB->insert_record('local_koitimetable', $record);
             $inserted++;
         } catch (Exception $e) {
+            echo $OUTPUT->notification('Skipped: Caught in exception->' . $e->getMessage(), 'notifyerror');
             $skipped++;
         }
     }
