@@ -1,154 +1,121 @@
 <?php
 
 require_once(__DIR__ . '/../../config.php');
-require_once(__DIR__ . '/upload_form.php');
 
 require_login();
 require_capability('local/koitimetable:manage', context_system::instance());
 
 $context = context_system::instance();
-global $DB;
+global $DB, $OUTPUT, $PAGE, $CFG;
 
 $PAGE->set_url('/local/koitimetable/import.php');
 $PAGE->set_context($context);
-$PAGE->set_title('Manual Timetable import');
-$PAGE->set_heading('Manual Timetable import');
+$PAGE->set_title('Timetable import');
+$PAGE->set_heading('Timetable import');
 
-$form = new local_koitimetable_upload_form();
+$import = optional_param('import', 0, PARAM_BOOL);
 
 echo $OUTPUT->header();
+if (empty($CFG->t1_client_id) || empty($CFG->t1_client_secret)) {
+    echo $OUTPUT->notification('T1 API credentials are not configured.', 'notifyerror');
+    echo $OUTPUT->footer();
+    exit;
+    // You can find config.php in htdocs/moodle/config.php, or go up 2 directories from this file.
+}
 
-/* === Handle upload === */
-if ($form->is_cancelled()) {
-    redirect($PAGE->url);
+/* =========================================================
+ * Handle import button
+ * ======================================================= */
+if ($import && confirm_sesskey()) {
 
-} else if ($data = $form->get_data()) {
+    $curl = new curl([
+        'timeout' => 60,
+        'ssl_verifypeer' => true
+    ]);
 
-    file_save_draft_area_files(
-        $data->csvfile,
-        $context->id,
-        'local_koitimetable',
-        'csvfile',
-        0,
-        ['subdirs' => 0, 'maxfiles' => 1]
-    );
+    /* === Step 1: OAuth token === */
+    $oauthurl = $CFG->t1_oauth_url;
 
-    echo $OUTPUT->notification('CSV uploaded successfully', 'notifysuccess');
+    $oauthresponse = $curl->post($oauthurl, [
+        'grant_type'    => 'client_credentials',
+        'client_id'     => $CFG->t1_client_id,
+        'client_secret' => $CFG->t1_client_secret
+    ]);
 
+    $oauthdata = json_decode($oauthresponse, true);
 
-/* === Insert into DB === */
-
-
-    $fs = get_file_storage();
-    $files = $fs->get_area_files(
-        $context->id,
-        'local_koitimetable',
-        'csvfile',
-        0,
-        'timemodified DESC',
-        false
-    );
-
-    if (!$files) {
-        echo $OUTPUT->notification('No CSV file found.', 'notifyerror');
+    if (empty($oauthdata['access_token'])) {
+        echo $OUTPUT->notification('Failed to obtain OAuth token', 'notifyerror');
         echo $OUTPUT->footer();
         exit;
     }
 
-    $file = reset($files);
-    $content = $file->get_content();
+    /* === Step 2: Fetch classtimes === */
+    $endpoint = $CFG->t1_api_base . '/Api/RaaS/v2/classtimes?pageSize=1000000&page=1';
 
-    /* === Parse CSV === */
-    $lines = array_map('str_getcsv', explode("\n", trim($content)));
-    $headers = array_shift($lines);
+    $curl->setHeader([
+        'Authorization: Bearer ' . $oauthdata['access_token'],
+        'Content-Type: application/json'
+    ]);
 
-    $requiredheaders = [
-        'CLS_BKG_CMT',
-        'CLS_BKG_START_DT',
-        'CLS_BKG_END_DT',
-        'CLS_BKG_DAY',
-        'CLS_BKG_START_TIME',
-        'CLS_BKG_END_TIME',
-        'BUILDING_ID',
-        'ROOM_ID',
-        'ACTIVITY'
-    ];
+    $response = $curl->get($endpoint);
+    $json = json_decode($response, true);
 
-    $missing = array_diff($requiredheaders, $headers);
-
-    if (!empty($missing)) {
-        echo $OUTPUT->notification(
-            'Missing required CSV columns: ' . implode(', ', $missing),
-            'notifyerror'
-        );
+    if (empty($json['DataSet']) || !is_array($json['DataSet'])) {
+        echo $OUTPUT->notification('Invalid API response', 'notifyerror');
         echo $OUTPUT->footer();
         exit;
     }
 
-    /* Map headers to column index */
-    $headerindex = array_flip($headers);
-
-    // Safe import
+    /* === Step 3: Import === */
     $transaction = $DB->start_delegated_transaction();
-
-    /* Optional: clear old data first */
     $DB->delete_records('local_koitimetable');
 
-    /* === Insert rows === */
+    $requiredkeys = [
+        'ACTIVITY',
+        'STARTDATE',
+        'ENDDATE',
+        'STARTTIME',
+        'ENDTIME',
+        'BUILDINGID',
+        'ROOMID',
+        'COMMENT'
+    ];
+
     $inserted = 0;
-    $skipped = 0;
+    $skipped  = 0;
 
-    foreach ($lines as $line) {
-        if (count($line) < count($headers)) {
-            $skipped++;
-            echo $OUTPUT->notification('Skipped: More fields than expected' . $line, 'notifyerror');
-            continue; // skip broken rows
+    foreach ($json['DataSet'] as $row) {
+
+        foreach ($requiredkeys as $key) {
+            if (!array_key_exists($key, $row)) {
+                $skipped++;
+                continue 2;
+            }
         }
 
-        $row = [];
-        foreach ($headerindex as $key => $index) {
-            $row[$key] = $line[$index] ?? null;
-        }
+        $startdate = strtotime($row['STARTDATE']);
+        $enddate   = strtotime($row['ENDDATE']);
 
-        // Validate fields
-        //If any required fields are empty, skip the row
-        if (
-            empty($row['CLS_BKG_START_DT']) ||
-            empty($row['CLS_BKG_END_DT']) ||
-            empty($row['CLS_BKG_CMT'])
-        ) {
+        if (!$startdate || !$enddate || $enddate < $startdate || empty($row['COMMENT'])) {
             $skipped++;
-            echo $OUTPUT->notification('Skipped: Missing required fields in row: ' . implode(', ', $line), 'notifyerror');
             continue;
         }
 
-        // If the classes end before they start, skip the row
-        $startdate = strtotime($row['CLS_BKG_START_DT']);
-        $enddate   = strtotime($row['CLS_BKG_END_DT']);
-
-        if (!$startdate || !$enddate || $enddate < $startdate) {
-            $skipped++;
-            echo $OUTPUT->notification('Skipped: Invalid date range', 'notifyerror');
-            continue;
-        }
-
-        // Create record and insert
         $record = new stdClass();
-        $record->groupname = $row['CLS_BKG_CMT'];
-        $record->startdate = strtotime($row['CLS_BKG_START_DT']);
-        $record->enddate   = strtotime($row['CLS_BKG_END_DT']);
-        $record->timestart = (int)$row['CLS_BKG_START_TIME'];
-        $record->timeend   = (int)$row['CLS_BKG_END_TIME'];
-        $record->building  = $row['BUILDING_ID'];
-        $record->room      = $row['ROOM_ID'];
+        $record->groupname = $row['COMMENT'];
+        $record->startdate = $startdate;
+        $record->enddate   = $enddate;
+        $record->timestart = (int)$row['STARTTIME'];
+        $record->timeend   = (int)$row['ENDTIME'];
+        $record->building  = $row['BUILDINGID'];
+        $record->room      = $row['ROOMID'];
         $record->activity  = (int)$row['ACTIVITY'];
-        // consider adding class type, lecturer...
 
         try {
             $DB->insert_record('local_koitimetable', $record);
             $inserted++;
         } catch (Exception $e) {
-            echo $OUTPUT->notification('Skipped: Caught in exception->' . $e->getMessage(), 'notifyerror');
             $skipped++;
         }
     }
@@ -161,6 +128,21 @@ if ($form->is_cancelled()) {
     );
 }
 
-$form->display();
+/* =========================================================
+ * Import button
+ * ======================================================= */
+$importurl = new moodle_url('/local/koitimetable/import.php', [
+    'import'  => 1,
+    'sesskey' => sesskey()
+]);
+
+echo html_writer::div(
+    html_writer::link(
+        $importurl,
+        'Import timetable from T1',
+        ['class' => 'btn btn-primary']
+    ),
+    'mt-4'
+);
 
 echo $OUTPUT->footer();

@@ -30,42 +30,51 @@ if (empty($groupnames)) {
     echo $OUTPUT->footer();
     exit;
 }
-echo '<h2>Showing timetable for groups: ' . implode(', ', $groupnames) . '</h2>';
+// echo '<h2>Showing timetable for groups: ' . implode(', ', $groupnames) . '</h2>';
 
 $records = [];
-// 2. Query timetable
-foreach ($groupnames as $groupname) {
-    list($sqlin, $params) = $DB->get_in_or_equal($groupname, SQL_PARAMS_NAMED);
-
+if (in_array('display_all_sessions',$groupnames)) {
     $sql = "
         SELECT *
         FROM {local_koitimetable}
-        WHERE groupname $sqlin
         ORDER BY startdate, timestart
     ";
-
-    $records = array_merge($records, $DB->get_records_sql($sql, $params));
+    $records = $DB->get_records_sql($sql);
+} else {
+    // 2. Query timetable
+    foreach ($groupnames as $groupname) {
+        list($sqlin, $params) = $DB->get_in_or_equal($groupname, SQL_PARAMS_NAMED);
+    
+        $sql = "
+            SELECT *
+            FROM {local_koitimetable}
+            WHERE groupname $sqlin
+            ORDER BY startdate, timestart
+        ";
+    
+        $records = array_merge($records, $DB->get_records_sql($sql, $params));
+    }
 }
 
 // Uncomment if you want to see a simple table output
-$table = new html_table();
-$table->head = ['Group', 'Date', 'Time', 'Location'];
+// $table = new html_table();
+// $table->head = ['Group', 'Date', 'Time', 'Location'];
 
-foreach ($records as $r) {
-    // padding for times before 10am, as there's only 5 characters instead of 6...
-    $start = str_pad($r->timestart, 6, '0', STR_PAD_LEFT);
-    $end = str_pad($r->timeend, 6, '0', STR_PAD_LEFT);
-    $table->data[] = [
-        s($r->groupname) . ' - ' . s($r->activity == 1 ? 'Lecture' : 'Tutorial'),
-        userdate($r->startdate, '%d %b %Y'),
-        substr($start, 0, 2) . ':' . substr($start, 2, 2)
-        . ' – ' .
-        substr($end, 0, 2) . ':' . substr($end, 2, 2),
-        s($r->building . ' ' . $r->room)
-    ];
-}
+// foreach ($records as $r) {
+//     // padding for times before 10am, as there's only 5 characters instead of 6...
+//     $start = str_pad($r->timestart, 6, '0', STR_PAD_LEFT);
+//     $end = str_pad($r->timeend, 6, '0', STR_PAD_LEFT);
+//     $table->data[] = [
+//         s($r->groupname) . ' - ' . s($r->activity == 1 ? 'Lecture' : 'Tutorial'),
+//         userdate($r->startdate, '%d %b %Y'),
+//         substr($start, 0, 2) . ':' . substr($start, 2, 2)
+//         . ' – ' .
+//         substr($end, 0, 2) . ':' . substr($end, 2, 2),
+//         s($r->building . ' ' . $r->room)
+//     ];
+// }
 
-echo html_writer::table($table);
+// echo html_writer::table($table);
 
 // Draw timetable
 $weekoffset = optional_param('week', 0, PARAM_INT); // +1, -1, etc.
