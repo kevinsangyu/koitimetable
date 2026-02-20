@@ -34,7 +34,7 @@ if ($import && confirm_sesskey()) {
     ]);
 
     /* === Step 1: OAuth token === */
-    $oauthurl = $CFG->t1_oauth_url;
+    $oauthurl = $CFG->t1_api_base . '/oauth2/access_token';
 
     $oauthresponse = $curl->post($oauthurl, [
         'grant_type'    => 'client_credentials',
